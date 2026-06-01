@@ -1,0 +1,133 @@
+#include "syphon.h"
+#include <signal.h>
+
+task_t g_task;
+mach_port_t g_exc_port;
+static volatile sig_atomic_t g_running = 1;
+
+static void on_signal(int sig) {
+    (void)sig;
+    g_running = 0;
+}
+
+static void print_envp(task_t task, uint64_t addr) {
+    char *ptrs[256];
+    mach_vm_size_t out = 0;
+    kern_return_t kr = mach_vm_read_overwrite(task, addr, sizeof(ptrs),
+                                               (mach_vm_address_t)ptrs, &out);
+    if (kr != KERN_SUCCESS) { printf("  envp=0x%llx (unreadable)\n", addr); return; }
+    int n = out / sizeof(char *);
+    for (int i = 0; i < n && ptrs[i]; i++) {
+        char buf[4096];
+        mach_vm_size_t s = 0;
+        kr = mach_vm_read_overwrite(task, (mach_vm_address_t)ptrs[i],
+                                     sizeof(buf) - 1, (mach_vm_address_t)buf, &s);
+        if (kr == KERN_SUCCESS && s > 0) {
+            buf[s < sizeof(buf) ? s : sizeof(buf) - 1] = '\0';
+            printf("    %s\n", buf);
+        }
+    }
+}
+
+int main(void) {
+    signal(SIGINT, on_signal);
+    signal(SIGTERM, on_signal);
+
+    pid_t pid = 1;
+    kern_return_t kr = task_for_pid(mach_task_self(), pid, &g_task);
+    if (kr != KERN_SUCCESS) { fprintf(stderr, "task_for_pid(1): %s\n", mach_error_string(kr)); return 1; }
+    printf("[+] attached to launchd (pid %d)\n", pid);
+
+    add_targ(dlsym(RTLD_DEFAULT, "__posix_spawn"), 1, "posix_spawn");
+    if (g_ntarg == 0) { fprintf(stderr, "no targets\n"); return 1; }
+
+    mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &g_exc_port);
+    mach_port_insert_right(mach_task_self(), g_exc_port, g_exc_port, MACH_MSG_TYPE_MAKE_SEND);
+
+    kr = task_set_exception_ports(g_task,
+        EXC_MASK_BREAKPOINT, g_exc_port,
+        EXCEPTION_DEFAULT | MACH_EXCEPTION_CODES, ARM_THREAD_STATE64);
+    if (kr != KERN_SUCCESS) { fprintf(stderr, "set_exception_ports: %s\n", mach_error_string(kr)); return 1; }
+
+    init_ds_template();
+    if (install_hw_breakpoints() < 0) {
+        fprintf(stderr, "failed to install hw breakpoints\n");
+        return 1;
+    }
+
+    printf("[+] listening...\n");
+    fflush(stdout);
+
+    while (g_running) {
+        union {
+            exc_req_t req;
+            uint8_t pad[512];
+        } msg;
+
+        kr = mach_msg(&msg.req.head, MACH_RCV_MSG | MACH_RCV_TIMEOUT,
+                      0, sizeof(msg), g_exc_port,
+                      100, MACH_PORT_NULL);
+        if (kr == MACH_RCV_TIMED_OUT) {
+            install_hw_breakpoints();
+            continue;
+        }
+        if (kr != KERN_SUCCESS) continue;
+
+        mach_port_t thread = msg.req.thread.name;
+
+        if (msg.req.exception == EXC_BREAKPOINT) {
+            arm_thread_state64_t state;
+            mach_msg_type_number_t sc = ARM_THREAD_STATE64_COUNT;
+            if (thread_get_state(thread, ARM_THREAD_STATE64,
+                                 (thread_state_t)&state, &sc) != KERN_SUCCESS) {
+                send_reply(&msg.req.head, KERN_SUCCESS);
+                continue;
+            }
+
+            int cur = -1;
+            for (int i = 0; i < g_ntarg; i++) {
+                if (state.__pc == g_targs[i].addr) { cur = i; break; }
+            }
+            if (cur < 0) {
+                send_reply(&msg.req.head, KERN_SUCCESS);
+                continue;
+            }
+
+            printf("[%s]", g_targs[cur].name);
+            uint64_t path_ptr = state.__x[g_targs[cur].path_reg];
+            char path[PATH_MAX];
+            mach_vm_size_t out = 0;
+            kr = mach_vm_read_overwrite(g_task, path_ptr, PATH_MAX - 1,
+                    (mach_vm_address_t)path, &out);
+            if (kr == KERN_SUCCESS) {
+                path[out < PATH_MAX ? out : PATH_MAX - 1] = '\0';
+                printf(" %s\n", path);
+            } else {
+                printf(" path=0x%llx\n", path_ptr);
+            }
+
+            uint64_t envp_addr = state.__x[5];
+            if (envp_addr) print_envp(g_task, envp_addr);
+            fflush(stdout);
+
+            arm_debug_state64_t ds;
+            mach_msg_type_number_t dsc = ARM_DEBUG_STATE64_COUNT;
+            thread_get_state(thread, ARM_DEBUG_STATE64, (thread_state_t)&ds, &dsc);
+            ds.__bcr[cur] = HW_BRK_DIS;
+            thread_set_state(thread, ARM_DEBUG_STATE64, (thread_state_t)&ds, dsc);
+
+            kr = send_reply(&msg.req.head, KERN_SUCCESS);
+            if (kr != MACH_MSG_SUCCESS)
+                printf("[-] send_reply: %s\n", mach_error_string(kr));
+
+        } else {
+            send_reply(&msg.req.head, KERN_SUCCESS);
+        }
+    }
+
+    printf("\n[+] cleaning up...\n");
+    clear_hw_breakpoints();
+    reset_exception_ports();
+    printf("[+] done\n");
+    return 0;
+}
