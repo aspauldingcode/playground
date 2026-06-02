@@ -25,11 +25,16 @@ add_library(syphon STATIC
     syphon/breakpoint.c
     syphon/mach_exc.c
     syphon/process.c
+    syphon/exe.c
 )
 
 target_include_directories(syphon PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/syphon>
     $<INSTALL_INTERFACE:include/syphon>
+)
+target_link_libraries(syphon PUBLIC
+    "-framework CoreFoundation"
+    "-framework Security"
 )
 
 # ── Tracers (add new executables here) ────────────────────────

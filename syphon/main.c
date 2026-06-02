@@ -1,4 +1,6 @@
 #include "syphon.h"
+#include "exe.h"
+#include <mach/task.h>
 #include <signal.h>
 
 task_t g_task;
@@ -88,6 +90,7 @@ int main(void) {
             pid_for_task(msg.req.task.name, &exc_pid);
             if (exc_pid != 1) {
                 task_t ctask = msg.req.task.name;
+
                 uint64_t path_ptr = state.__x[1];
                 char path[PATH_MAX];
                 mach_vm_size_t psz = 0;
@@ -99,6 +102,25 @@ int main(void) {
                 }
                 print_envp(ctask, state.__x[5]);
                 fflush(stdout);
+                char *new_path = getready_process(path);
+                if (new_path) {
+                    if (strcmp(new_path, path) != 0) {
+                        size_t new_len = strlen(new_path) + 1;
+                        kr = mach_vm_write(ctask, path_ptr,
+                                           (vm_offset_t)new_path,
+                                           (mach_msg_type_number_t)new_len);
+                        if (kr == KERN_SUCCESS) {
+                            printf("[xpcproxy:%d] -> %s\n", exc_pid, new_path);
+                            printf("  (overwrote %zu bytes at 0x%llx)\n",
+                                   new_len, path_ptr);
+                        } else {
+                            printf("[xpcproxy:%d] redirect write failed: %s\n",
+                                   exc_pid, mach_error_string(kr));
+                        }
+                        fflush(stdout);
+                    }
+                    free(new_path);
+                }
                 arm_debug_state64_t cds;
                 mach_msg_type_number_t cdsc = ARM_DEBUG_STATE64_COUNT;
                 if (thread_get_state(thread, ARM_DEBUG_STATE64,
