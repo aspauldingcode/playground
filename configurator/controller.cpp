@@ -1,4 +1,5 @@
 #include "controller.h"
+#include "dmanager.h"
 #include <algorithm>
 #include <cstdio>
 #include <memory>
@@ -10,6 +11,8 @@ Controller::Controller(MainWindow& window)
     m_window.on_edit_tweak([this](slint::SharedString name) { openEditor(std::string(name)); });
     m_window.on_toggle_tweak([this](slint::SharedString name) { toggleTweak(std::string(name)); });
     m_window.on_package_tweak([this](slint::SharedString name) { packageTweak(std::string(name)); });
+    m_window.on_install_daemon([this] { installDaemon(); });
+    m_window.on_uninstall_daemon([this] { uninstallDaemon(); });
 }
 
 void Controller::load() {
@@ -20,6 +23,7 @@ void Controller::load() {
 
     m_window.set_dev_tools_available(hasDeveloperTools());
     refreshTweaks();
+    refreshDaemonStatus();
 }
 
 void Controller::save() {
@@ -165,4 +169,26 @@ void Controller::packageTweak(const std::string& name) {
     } else {
         m_window.set_status_message((std::string("Package failed for ") + name).c_str());
     }
+}
+
+void Controller::refreshDaemonStatus() {
+    m_window.set_daemon_status(slint::SharedString(daemonStatusString(DaemonManager::status())));
+}
+
+void Controller::installDaemon() {
+    if (DaemonManager::install()) {
+        m_window.set_status_message("Launch daemon installed.");
+    } else {
+        m_window.set_status_message("Error: Failed to install launch daemon.");
+    }
+    refreshDaemonStatus();
+}
+
+void Controller::uninstallDaemon() {
+    if (DaemonManager::uninstall()) {
+        m_window.set_status_message("Launch daemon uninstalled.");
+    } else {
+        m_window.set_status_message("Error: Failed to uninstall launch daemon.");
+    }
+    refreshDaemonStatus();
 }

@@ -1,4 +1,11 @@
-import { CheckBox, Button, VerticalBox, ScrollView, ListView, LineEdit } from "std-widgets.slint";
+import {
+    CheckBox,
+    Button,
+    VerticalBox,
+    ScrollView,
+    ListView,
+    LineEdit,
+} from "std-widgets.slint";
 
 export struct TweakInfo {
     name: string,
@@ -18,25 +25,76 @@ export component MainWindow inherits Window {
     in property <bool> dev-tools-available;
     in property <string> status-message;
     in-out property <image> default-icon: @image-url("drill.png");
+    in property <string> daemon-status;
 
     callback save();
     callback edit-tweak(string);
     callback toggle-tweak(string);
     callback package-tweak(string);
+    callback install-daemon();
+    callback uninstall-daemon();
 
     VerticalBox {
         padding: 16px;
         spacing: 12px;
 
-        Text { text: "Settings"; font-weight: 700; }
+        Text {
+            text: "Settings";
+            font-weight: 700;
+        }
 
-        CheckBox { text: "Use legacy Ammonia tweaks folder"; checked <=> root.use-legacy-ammonia; }
-        CheckBox { text: "Disable PAC in newly spawned programs"; checked <=> root.disable-pac; }
-        CheckBox { text: "Pause tweak injection"; checked <=> root.pause-injection; }
+        CheckBox {
+            text: "Use legacy Ammonia tweaks folder";
+            checked <=> root.use-legacy-ammonia;
+        }
 
-        Text { text: "Installed Tweaks"; font-weight: 700; }
+        CheckBox {
+            text: "Disable arm64e (PAC) in newly spawned programs (Work In Progress)";
+            checked <=> root.disable-pac;
+        }
 
-        ScrollView { vertical-stretch: 1;
+        CheckBox {
+            text: "Pause tweak injection";
+            checked <=> root.pause-injection;
+        }
+
+        Text {
+            text: "Launch Daemon";
+            font-weight: 700;
+        }
+
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: root.daemon-status;
+                color: #888;
+                vertical-alignment: center;
+            }
+
+            HorizontalLayout {
+                horizontal-stretch: 1;
+            }
+
+            Button {
+                text: "Install";
+                visible: root.daemon-status == "Not Installed";
+                clicked => { root.install-daemon(); }
+            }
+
+            Button {
+                text: "Uninstall";
+                visible: root.daemon-status != "Not Installed";
+                clicked => { root.uninstall-daemon(); }
+            }
+        }
+
+        Text {
+            text: "Installed Tweaks";
+            font-weight: 700;
+        }
+
+        ScrollView {
+            vertical-stretch: 1;
             ListView {
                 for tweak in root.tweaks: HorizontalLayout {
                     spacing: 8px;
@@ -46,6 +104,7 @@ export component MainWindow inherits Window {
                         width: 24px;
                         height: 24px;
                     }
+
                     VerticalLayout {
                         spacing: 2px;
                         Text {
@@ -53,6 +112,7 @@ export component MainWindow inherits Window {
                             font-size: 14px;
                             font-weight: 600;
                         }
+
                         HorizontalLayout {
                             spacing: 4px;
                             Rectangle {
@@ -61,6 +121,7 @@ export component MainWindow inherits Window {
                                 border-radius: 4px;
                                 background: tweak.disabled ? #e74c3c : #2ecc71;
                             }
+
                             Text {
                                 text: tweak.disabled ? "Disabled" : "Enabled";
                                 font-size: 11px;
@@ -68,27 +129,39 @@ export component MainWindow inherits Window {
                             }
                         }
                     }
-                    HorizontalLayout { horizontal-stretch: 1; }
+
+                    HorizontalLayout {
+                        horizontal-stretch: 1;
+                    }
+
                     HorizontalLayout {
                         spacing: 4px;
                         Button {
                             text: "Edit";
                             horizontal-stretch: 1;
                             min-width: 72px;
-                            clicked => { root.edit-tweak(tweak.name); }
+                            clicked => {
+                                root.edit-tweak(tweak.name);
+                            }
                         }
+
                         Button {
                             text: tweak.disabled ? "Enable" : "Disable";
                             horizontal-stretch: 1;
                             min-width: 72px;
-                            clicked => { root.toggle-tweak(tweak.name); }
+                            clicked => {
+                                root.toggle-tweak(tweak.name);
+                            }
                         }
+
                         Button {
                             text: "Package";
                             visible: root.dev-tools-available;
                             horizontal-stretch: 1;
                             min-width: 72px;
-                            clicked => { root.package-tweak(tweak.name); }
+                            clicked => {
+                                root.package-tweak(tweak.name);
+                            }
                         }
                     }
                 }
@@ -100,9 +173,14 @@ export component MainWindow inherits Window {
             Button {
                 text: "Save Settings";
                 min-width: 120px;
-                clicked => { root.save(); }
+                clicked => {
+                    root.save();
+                }
             }
-            HorizontalLayout { horizontal-stretch: 1; }
+
+            HorizontalLayout {
+                horizontal-stretch: 1;
+            }
         }
 
         Text {
@@ -140,9 +218,13 @@ export component TweakEditor inherits Window {
             font-size: 16px;
         }
 
-        Text { text: "Blacklisted Applications"; font-weight: 600; }
+        Text {
+            text: "Blacklisted Applications";
+            font-weight: 600;
+        }
 
-        ScrollView { vertical-stretch: 1;
+        ScrollView {
+            vertical-stretch: 1;
             ListView {
                 for app in root.blacklisted-apps: HorizontalLayout {
                     spacing: 8px;
@@ -153,10 +235,13 @@ export component TweakEditor inherits Window {
                         vertical-alignment: center;
                         horizontal-stretch: 1;
                     }
+
                     Button {
                         text: "-";
                         min-width: 28px;
-                        clicked => { root.remove-blacklisted(app); }
+                        clicked => {
+                            root.remove-blacklisted(app);
+                        }
                     }
                 }
             }
@@ -165,20 +250,31 @@ export component TweakEditor inherits Window {
         HorizontalLayout {
             spacing: 8px;
             i-bl-input := LineEdit {
-                placeholder-text: "Bundle ID (e.g. com.apple.Safari)...";
+                placeholder-text: "Executable Name";
                 horizontal-stretch: 1;
-                accepted => { root.add-blacklisted(self.text); self.text = ""; }
+                accepted => {
+                    root.add-blacklisted(self.text);
+                    self.text = "";
+                }
             }
+
             Button {
                 text: "+ Add";
                 min-width: 60px;
-                clicked => { root.add-blacklisted(i-bl-input.text); i-bl-input.text = ""; }
+                clicked => {
+                    root.add-blacklisted(i-bl-input.text);
+                    i-bl-input.text = "";
+                }
             }
         }
 
-        Text { text: "Framework Dependencies"; font-weight: 600; }
+        Text {
+            text: "Framework Dependencies";
+            font-weight: 600;
+        }
 
-        ScrollView { vertical-stretch: 1;
+        ScrollView {
+            vertical-stretch: 1;
             ListView {
                 for dep in root.framework-deps: HorizontalLayout {
                     spacing: 8px;
@@ -189,10 +285,13 @@ export component TweakEditor inherits Window {
                         vertical-alignment: center;
                         horizontal-stretch: 1;
                     }
+
                     Button {
                         text: "-";
                         min-width: 28px;
-                        clicked => { root.remove-framework-dep(dep); }
+                        clicked => {
+                            root.remove-framework-dep(dep);
+                        }
                     }
                 }
             }
@@ -201,22 +300,45 @@ export component TweakEditor inherits Window {
         HorizontalLayout {
             spacing: 8px;
             i-fw-input := LineEdit {
-                placeholder-text: "Framework path...";
+                placeholder-text: "Framework name...";
                 horizontal-stretch: 1;
-                accepted => { root.add-framework-dep(self.text); self.text = ""; }
+                accepted => {
+                    root.add-framework-dep(self.text);
+                    self.text = "";
+                }
             }
+
             Button {
                 text: "+ Add";
                 min-width: 60px;
-                clicked => { root.add-framework-dep(i-fw-input.text); i-fw-input.text = ""; }
+                clicked => {
+                    root.add-framework-dep(i-fw-input.text);
+                    i-fw-input.text = "";
+                }
             }
         }
 
         HorizontalLayout {
             spacing: 8px;
-            HorizontalLayout { horizontal-stretch: 1; }
-            Button { text: "Save"; min-width: 80px; clicked => { root.save(); } }
-            Button { text: "Cancel"; min-width: 80px; clicked => { root.cancel(); } }
+            HorizontalLayout {
+                horizontal-stretch: 1;
+            }
+
+            Button {
+                text: "Save";
+                min-width: 80px;
+                clicked => {
+                    root.save();
+                }
+            }
+
+            Button {
+                text: "Cancel";
+                min-width: 80px;
+                clicked => {
+                    root.cancel();
+                }
+            }
         }
     }
 }

@@ -14,6 +14,9 @@ private:
     void openEditor(const std::string& name);
     void toggleTweak(const std::string& name);
     void packageTweak(const std::string& name);
+    void refreshDaemonStatus();
+    void installDaemon();
+    void uninstallDaemon();
 
     MainWindow& m_window;
     std::vector<TweakData> m_tweakInfos;

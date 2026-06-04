@@ -47,6 +47,39 @@ static void clear_brk_and_reply(mach_port_t thread, mach_msg_header_t *msg) {
     send_reply(msg, KERN_SUCCESS);
 }
 
+bool path_contains_component(const char *path,
+                             const char *component,
+                             bool hasToAppearTwice) {
+    if (!path || !component || !*component) {
+        return false;
+    }
+
+    size_t comp_len = strlen(component);
+    const char *p = path;
+    int matches = 0;
+
+    while ((p = strstr(p, component))) {
+        bool start_ok = (p == path) || (p[-1] == '/');
+        bool end_ok = (p[comp_len] == '\0') || (p[comp_len] == '/');
+
+        if (start_ok && end_ok) {
+            matches++;
+
+            if (!hasToAppearTwice) {
+                return true;
+            }
+
+            if (matches >= 2) {
+                return true;
+            }
+        }
+
+        p++;
+    }
+
+    return false;
+}
+
 int main(void) {
     signal(SIGINT, on_signal);
     signal(SIGTERM, on_signal);
@@ -133,6 +166,12 @@ int main(void) {
                 int path_ok = (kr == KERN_SUCCESS && psz > 0 && path[0] == '/');
                 if (path_ok) {
                     path[psz < PATH_MAX ? psz : PATH_MAX - 1] = '\0';
+                    if (path_contains_component(path, "Frameworks", false) ||
+                        path_contains_component(path, "PrivateFrameworks", true)) {
+                        clear_brk_and_reply(thread, &msg.req.head);
+                        continue;
+                    }
+
                     printf("[xpcproxy:%d] path=%s\n", exc_pid, path);
                     print_envp(ctask, state.__x[5]);
                 }

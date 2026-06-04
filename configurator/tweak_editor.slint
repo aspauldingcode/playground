@@ -1,4 +1,10 @@
-import { Button, VerticalBox, ScrollView, ListView, LineEdit } from "std-widgets.slint";
+import {
+    Button,
+    VerticalBox,
+    ScrollView,
+    ListView,
+    LineEdit,
+} from "std-widgets.slint";
 
 export component TweakEditor inherits Window {
     width: 500px;
@@ -26,9 +32,13 @@ export component TweakEditor inherits Window {
             font-size: 16px;
         }
 
-        Text { text: "Blacklisted Applications"; font-weight: 600; }
+        Text {
+            text: "Blacklisted Applications";
+            font-weight: 600;
+        }
 
-        ScrollView { vertical-stretch: 1;
+        ScrollView {
+            vertical-stretch: 1;
             ListView {
                 for app in root.blacklisted-apps: HorizontalLayout {
                     spacing: 8px;
@@ -39,10 +49,13 @@ export component TweakEditor inherits Window {
                         vertical-alignment: center;
                         horizontal-stretch: 1;
                     }
+
                     Button {
                         text: "-";
                         min-width: 28px;
-                        clicked => { root.remove-blacklisted(app); }
+                        clicked => {
+                            root.remove-blacklisted(app);
+                        }
                     }
                 }
             }
@@ -51,20 +64,31 @@ export component TweakEditor inherits Window {
         HorizontalLayout {
             spacing: 8px;
             i-bl-input := LineEdit {
-                placeholder-text: "Bundle ID (e.g. com.apple.Safari)...";
+                placeholder-text: "Executable Name";
                 horizontal-stretch: 1;
-                accepted => { root.add-blacklisted(self.text); self.text = ""; }
+                accepted => {
+                    root.add-blacklisted(self.text);
+                    self.text = "";
+                }
             }
+
             Button {
                 text: "+ Add";
                 min-width: 60px;
-                clicked => { root.add-blacklisted(i-bl-input.text); i-bl-input.text = ""; }
+                clicked => {
+                    root.add-blacklisted(i-bl-input.text);
+                    i-bl-input.text = "";
+                }
             }
         }
 
-        Text { text: "Framework Dependencies"; font-weight: 600; }
+        Text {
+            text: "Framework Dependencies";
+            font-weight: 600;
+        }
 
-        ScrollView { vertical-stretch: 1;
+        ScrollView {
+            vertical-stretch: 1;
             ListView {
                 for dep in root.framework-deps: HorizontalLayout {
                     spacing: 8px;
@@ -75,10 +99,13 @@ export component TweakEditor inherits Window {
                         vertical-alignment: center;
                         horizontal-stretch: 1;
                     }
+
                     Button {
                         text: "-";
                         min-width: 28px;
-                        clicked => { root.remove-framework-dep(dep); }
+                        clicked => {
+                            root.remove-framework-dep(dep);
+                        }
                     }
                 }
             }
@@ -87,22 +114,45 @@ export component TweakEditor inherits Window {
         HorizontalLayout {
             spacing: 8px;
             i-fw-input := LineEdit {
-                placeholder-text: "Framework path...";
+                placeholder-text: "Framework name...";
                 horizontal-stretch: 1;
-                accepted => { root.add-framework-dep(self.text); self.text = ""; }
+                accepted => {
+                    root.add-framework-dep(self.text);
+                    self.text = "";
+                }
             }
+
             Button {
                 text: "+ Add";
                 min-width: 60px;
-                clicked => { root.add-framework-dep(i-fw-input.text); i-fw-input.text = ""; }
+                clicked => {
+                    root.add-framework-dep(i-fw-input.text);
+                    i-fw-input.text = "";
+                }
             }
         }
 
         HorizontalLayout {
             spacing: 8px;
-            HorizontalLayout { horizontal-stretch: 1; }
-            Button { text: "Save"; min-width: 80px; clicked => { root.save(); } }
-            Button { text: "Cancel"; min-width: 80px; clicked => { root.cancel(); } }
+            HorizontalLayout {
+                horizontal-stretch: 1;
+            }
+
+            Button {
+                text: "Save";
+                min-width: 80px;
+                clicked => {
+                    root.save();
+                }
+            }
+
+            Button {
+                text: "Cancel";
+                min-width: 80px;
+                clicked => {
+                    root.cancel();
+                }
+            }
         }
     }
 }

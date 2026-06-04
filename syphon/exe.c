@@ -36,8 +36,9 @@ static bool path_is_bundle(const char *path) {
         return false;
     }
 
-    return strstr(path, ".app/") != NULL;
+    return strstr(path, ".app") != NULL;
 }
+
 
 static void depacify(uint8_t *d, size_t s) {
     uint32_t m = *(uint32_t*)d;
@@ -45,20 +46,20 @@ static void depacify(uint8_t *d, size_t s) {
         struct mach_header_64 *h = (struct mach_header_64*)d;
         if (h->cputype == CPU_TYPE_ARM64 && (h->cpusubtype & 0xff) == 2) {
             h->cpusubtype = 0;
-            struct load_command *lc = (struct load_command*)(d + sizeof(*h));
-            for (uint32_t i=0; i<h->ncmds; i++) {
-                if (lc->cmd == LC_SEGMENT_64) {
-                    struct segment_command_64 *seg = (struct segment_command_64*)lc;
-                    if (seg->initprot & VM_PROT_EXECUTE) {
-                        uintptr_t addr = (uintptr_t)d + seg->fileoff;
-                        for (size_t j=0; j < seg->filesize - 3; j += 4) {
-                            uint32_t *p = (uint32_t*)(addr + j);
-                            if ((*p & 0xfffff000) == 0xd5032000) *p = 0xd503201f;
-                        }
-                    }
-                }
-                lc = (struct load_command*)((uint8_t*)lc + lc->cmdsize);
-            }
+            // struct load_command *lc = (struct load_command*)(d + sizeof(*h));
+            // for (uint32_t i=0; i<h->ncmds; i++) {
+            //     if (lc->cmd == LC_SEGMENT_64) {
+            //         struct segment_command_64 *seg = (struct segment_command_64*)lc;
+            //         if (seg->initprot & VM_PROT_EXECUTE) {
+            //             uintptr_t addr = (uintptr_t)d + seg->fileoff;
+            //             for (size_t j=0; j < seg->filesize - 3; j += 4) {
+            //                 uint32_t *p = (uint32_t*)(addr + j);
+            //                 if ((*p & 0xfffff000) == 0xd5032000) *p = 0xd503201f;
+            //             }
+            //         }
+            //     }
+            //     lc = (struct load_command*)((uint8_t*)lc + lc->cmdsize);
+            // }
         }
     } else if (m == FAT_MAGIC || m == FAT_CIGAM) {
         struct fat_header *fh = (struct fat_header*)d;

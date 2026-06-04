@@ -79,6 +79,7 @@ FetchContent_MakeAvailable(Slint)
 add_executable(configurator
     configurator/main.cpp
     configurator/controller.cpp
+    configurator/dmanager.cpp
     configurator/options.cpp
     configurator/tweaks.cpp
     configurator/configurator.slint
@@ -101,7 +102,10 @@ add_custom_command(TARGET configurator POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
         "${CMAKE_BINARY_DIR}/_deps/slint-build/api/cpp/libslint_cpp.dylib"
         "$<TARGET_FILE_DIR:configurator>"
-    COMMENT "Copying libslint_cpp.dylib into configurator.app bundle"
+    COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_SOURCE_DIR}/configurator/gearbox.icns"
+        "$<TARGET_BUNDLE_CONTENT_DIR:configurator>/Resources/gearbox.icns"
+    COMMENT "Copying libslint_cpp.dylib + gearbox.icns into configurator.app bundle"
 )
 
 # ── Install ──────────────────────────────────────────────────
