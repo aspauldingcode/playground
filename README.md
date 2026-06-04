@@ -7,7 +7,7 @@
 An open-source general-purpose runtime tweak system for macOS Apple Silicon.
 
 > [!WARNING]
-> System Integrity Protection (SIP) must be partially disabled — `csrutil enable --without fs` — this allows us to access to `initproc`, as well as set hardware breakpoints on other processes. SIP only needs to allow debugging, not fully off.
+> System Integrity Protection (SIP) must be partially disabled — `csrutil enable --without debug` — this allows us to access to `initproc`, as well as set hardware breakpoints on other processes. SIP only needs to allow debugging, not fully off.
 
 Plugin Playground provides a framework for intercepting and modifying the behavior of
 running processes. It's the foundation for building runtime plugins, introspection tools, and
