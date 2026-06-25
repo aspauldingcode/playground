@@ -34,7 +34,7 @@
           ];
 
           buildInputs = [
-            pkgs.apple-sdk_15
+            pkgs.apple-sdk_26
           ];
 
           cargoDeps = pkgs.rustPlatform.importCargoLock {

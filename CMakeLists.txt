@@ -12,7 +12,6 @@ function(syphon_codesign target)
   add_custom_command(TARGET ${target} POST_BUILD
         COMMAND codesign -f -s "${CODESIGN_IDENTITY}"
                 --entitlements "${CMAKE_SOURCE_DIR}/Master.entitlements"
-                --timestamp=none
                 $<TARGET_FILE:${target}>
         COMMENT "codesigning ${target} (identity: ${CODESIGN_IDENTITY})"
     )
